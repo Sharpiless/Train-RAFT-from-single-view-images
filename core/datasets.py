@@ -258,7 +258,7 @@ def generate_random_pose(base_motions=[0.05, 0.05, 0.05]):
         axisangle, translation)[0]
     return cam_ext
 
-def generate_random_pose_train():
+def generate_random_pose_train(ratio=1.0):
     scx = ((-1)**random.randrange(2))
     scy = ((-1)**random.randrange(2))
     scz = ((-1)**random.randrange(2))
@@ -285,7 +285,7 @@ def generate_random_pose_train():
     translation = torch.from_numpy(np.array([[camera_mot]])).cuda()
 
     # Compute (R|t)
-    cam_ext = transformation_from_parameters(axisangle, translation)[0]
+    cam_ext = transformation_from_parameters(axisangle * ratio, translation * ratio)[0]
     return cam_ext
 
 def render_novel_view_dynamic(
@@ -448,7 +448,7 @@ class MPIFlowDataset(data.Dataset):
             is_bg_depth_inf=False,
         )
         cam_ext_dynamic = generate_random_pose_train()
-        cam_ext = generate_random_pose_train()
+        cam_ext = generate_random_pose_train(ratio=0.5)
 
         frame, depth, flowA2B, mask = render_novel_view_dynamic(
             obj_mask,
