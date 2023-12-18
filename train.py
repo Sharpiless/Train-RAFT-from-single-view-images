@@ -8,16 +8,19 @@ import cv2
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+from flow_colors import flow_to_color
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+from tqdm import tqdm
 
 from torch.utils.data import DataLoader
 from raft import RAFT
 import evaluate
 import datasets
+from torchvision.utils import save_image
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -42,7 +45,7 @@ except:
 MAX_FLOW = 400
 SUM_FREQ = 100
 VAL_FREQ = 5000
-
+VIS_FREQ = 50
 
 def sequence_loss(flow_preds, flow_gt, valid, gamma=0.8, max_flow=MAX_FLOW):
     """ Loss function defined over sequence of flow predictions """
@@ -160,7 +163,7 @@ def train(args):
     should_keep_training = True
     while should_keep_training:
 
-        for i_batch, data_blob in enumerate(train_loader):
+        for i_batch, data_blob in tqdm(enumerate(train_loader)):
             optimizer.zero_grad()
             image1, image2, flow, valid = [x.cuda() for x in data_blob]
 
@@ -169,7 +172,17 @@ def train(args):
                 image1 = (image1 + stdv * torch.randn(*image1.shape).cuda()).clamp(0.0, 255.0)
                 image2 = (image2 + stdv * torch.randn(*image2.shape).cuda()).clamp(0.0, 255.0)
 
-            flow_predictions = model(image1, image2, iters=args.iters)            
+            flow_predictions = model(image1, image2, iters=args.iters)
+            if args.debug and total_steps % VIS_FREQ == VIS_FREQ - 1:
+                tmp_vis = []
+                for b in range(image1.shape[0]):
+                    image1_vis = image1[b].permute(1, 2, 0).cpu().numpy().astype(np.uint8)[:, :, ::-1]
+                    image2_vis = image2[b].permute(1, 2, 0).cpu().numpy().astype(np.uint8)[:, :, ::-1]
+                    flow_vis = flow[b].permute(1, 2, 0).cpu().numpy()
+                    flow_vis = flow_to_color(flow_vis, convert_to_bgr=True)
+                    tmp_vis.append(np.hstack([image1_vis, image2_vis, flow_vis]))
+                tmp_vis = np.vstack(tmp_vis)
+                cv2.imwrite(f"debug/vis-step{total_steps:08d}.png", tmp_vis)
 
             loss, metrics = sequence_loss(flow_predictions, flow, valid, args.gamma)
             scaler.scale(loss).backward()
@@ -239,6 +252,7 @@ if __name__ == '__main__':
     parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--gamma', type=float, default=0.8, help='exponential weighting')
     parser.add_argument('--add_noise', action='store_true')
+    parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
 
     torch.manual_seed(1234)

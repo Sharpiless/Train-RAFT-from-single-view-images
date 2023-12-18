@@ -413,7 +413,14 @@ class MPIFlowDataset(data.Dataset):
         K = K.unsqueeze(0)
         
         image = image_to_tensor(os.path.join(self.image_root, "images", self.image_list[index])).cuda().half()  # [1,3,h,w]
-        obj_mask = image_to_tensor(os.path.join(self.image_root, "masks", self.image_list[index])).cuda().half()  # [1,3,h,w]
+        mask = cv2.imread(os.path.join(self.image_root, "masks", self.image_list[index]), 0)
+        if mask.max() > 0:
+            obj_index = np.random.randint(mask.max()) + 1
+        else:
+            obj_index = 100
+        
+        obj_mask = torch.tensor(mask == obj_index).float().cuda().half()  # [1,3,h,w]
+        obj_mask = obj_mask.unsqueeze(0).unsqueeze(0)
         disp = disparity_to_tensor(os.path.join(self.image_root, "disps", self.image_list[index])).cuda().half() # [1,1,h,w]
         image = F.interpolate(image, size=(self.args.image_size[0], self.args.image_size[1]),
                             mode='bilinear', align_corners=True)
@@ -562,15 +569,16 @@ def fetch_dataloader(args, TRAIN_DS='C+T+K+S+H'):
     elif args.stage == 'MPI-Flow':
         aug_params = {'spatial_aug_prob': 1.0, 'crop_size': args.image_size, 'min_scale': -0.2, 'max_scale': -0.1, 'do_flip': False}
         train_dataset = MPIFlowDataset(args, aug_params)
-        # # debug
-        # from tqdm import tqdm
-        # for i in tqdm(range(5000)):
-        #     train_dataset.__getitem__(i)
+        # debug
+        # if args.debug:
+        #     from tqdm import tqdm
+        #     for i in tqdm(range(5000)):
+        #         train_dataset.__getitem__(i)
 
     train_loader = data.DataLoader(train_dataset, batch_size=args.batch_size, 
         pin_memory=False, shuffle=True, num_workers=1, drop_last=True)
 
-    print('Training with %d image pairs' % len(train_dataset))
+    print('Training with %d single-view images' % len(train_dataset))
     return train_loader
 
 
