@@ -448,7 +448,7 @@ class MPIFlowDataset(data.Dataset):
             is_bg_depth_inf=False,
         )
         cam_ext_dynamic = generate_random_pose_train()
-        cam_ext = generate_random_pose(base_motions=[0, 0, 0])
+        cam_ext = generate_random_pose_train()
 
         frame, depth, flowA2B, mask = render_novel_view_dynamic(
             obj_mask,
