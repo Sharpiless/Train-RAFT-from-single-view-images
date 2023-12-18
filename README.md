@@ -19,7 +19,7 @@ See also [https://github.com/Sharpiless/MPI-Flow](https://github.com/Sharpiless/
 
 ## Required Data
 
-To train RAFT with MPI-Flow, you will only need to create a single folder contains. 
+To train RAFT with MPI-Flow, you will only need to create a single folder contains: 
 
 ```Shell
 ├── datasets
@@ -28,6 +28,8 @@ To train RAFT with MPI-Flow, you will only need to create a single folder contai
         ├── disps
         ├── masks
 ```
+
+The "images" folder contains your custom single-view images (for example, COCO dataset).
 
 The "disps" folder contains depths predicted by [MiDaS](https://github.com/isl-org/MiDaS).
 
