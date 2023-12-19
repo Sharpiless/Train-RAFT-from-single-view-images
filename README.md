@@ -13,11 +13,11 @@ From left to right:
 
 1) original image; 2) generated image; 3) generated optical flow; 4) predicted by RAFT (C+T)
 
-<img src="misc/image.gif" width="80%" >
+<img src="debug/image.gif" width="80%" >
 
 Generated training examples:
 
-<img src="misc/vis-step00000049.png" width="80%" >
+<img src="debug/vis-step00000049.png" width="80%" >
 
 ## Requirements
 
