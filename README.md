@@ -15,7 +15,7 @@ From left to right:
 
 <img src="debug/image.gif" width="80%" >
 
-Generated training examples:
+Generated training examples (after augmentation):
 
 <img src="debug/vis-step00000049.png" width="80%" >
 
