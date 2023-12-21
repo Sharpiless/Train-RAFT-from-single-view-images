@@ -10,6 +10,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from flow_colors import flow_to_color
 
+import torch.distributed as dist
+import torch.utils.data.distributed
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -137,20 +140,24 @@ class Logger:
 
 
 def train(args):
+    
+    dist.init_process_group(backend='nccl', init_method='env://')
 
-    model = nn.DataParallel(RAFT(args), device_ids=args.gpus)
+    device = torch.device('cuda', args.local_rank)
+
+    model = torch.nn.parallel.DistributedDataParallel(RAFT(args).to(device), device_ids=[args.local_rank])
+    # net = torch.nn.parallel.DistributedDataParallel(net, device_ids=[args.local_rank], output_device=args.local_rank)
+
     print("Parameter Count: %d" % count_parameters(model))
 
     if args.restore_ckpt is not None:
         model.load_state_dict(torch.load(args.restore_ckpt), strict=False)
-
-    model.cuda()
     model.train()
 
     if args.stage != 'chairs':
         model.module.freeze_bn()
 
-    train_loader = datasets.fetch_dataloader(args)
+    train_loader = datasets.fetch_dataloader(args, device)
     optimizer, scheduler = fetch_optimizer(args, model)
 
     total_steps = 0
@@ -165,12 +172,12 @@ def train(args):
 
         for i_batch, data_blob in tqdm(enumerate(train_loader)):
             optimizer.zero_grad()
-            image1, image2, flow, valid = [x.cuda() for x in data_blob]
+            image1, image2, flow, valid = [x.to(device) for x in data_blob]
 
             if args.add_noise:
                 stdv = np.random.uniform(0.0, 5.0)
-                image1 = (image1 + stdv * torch.randn(*image1.shape).cuda()).clamp(0.0, 255.0)
-                image2 = (image2 + stdv * torch.randn(*image2.shape).cuda()).clamp(0.0, 255.0)
+                image1 = (image1 + stdv * torch.randn(*image1.shape).to(device)).clamp(0.0, 255.0)
+                image2 = (image2 + stdv * torch.randn(*image2.shape).to(device)).clamp(0.0, 255.0)
 
             flow_predictions = model(image1, image2, iters=args.iters)
             if args.debug and total_steps % VIS_FREQ == VIS_FREQ - 1:
@@ -242,7 +249,6 @@ if __name__ == '__main__':
     parser.add_argument('--num_steps', type=int, default=100000)
     parser.add_argument('--batch_size', type=int, default=6)
     parser.add_argument('--image_size', type=int, nargs='+', default=[384, 512])
-    parser.add_argument('--gpus', type=int, nargs='+', default=[0,1])
     parser.add_argument('--mixed_precision', action='store_true', help='use mixed precision')
 
     parser.add_argument('--iters', type=int, default=12)
@@ -253,6 +259,7 @@ if __name__ == '__main__':
     parser.add_argument('--gamma', type=float, default=0.8, help='exponential weighting')
     parser.add_argument('--add_noise', action='store_true')
     parser.add_argument('--debug', action='store_true')
+    parser.add_argument("--local-rank", type=int, default=0)
     args = parser.parse_args()
 
     torch.manual_seed(1234)

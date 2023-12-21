@@ -217,48 +217,7 @@ def gen_swing_path(num_frames=90, r_x=0.14, r_y=0., r_z=0.10):
     poses[:, 2, 3] = r_z * (torch.cos(2. * math.pi * t) - 1.)
     return poses.unbind()
 
-def generate_random_pose(base_motions=[0.05, 0.05, 0.05]):
-    scx = ((-1)**random.randrange(2))
-    scy = ((-1)**random.randrange(2))
-    scz = ((-1)**random.randrange(2))
-    if base_motions[0] == 0.05:
-        scz = -1 # most cameras move forward in kitti
-    else:
-        scx = scx * 0.5 # object motion
-        scy = scy * 0.5
-        scz = scz * 0.5
-        
-    # Random scalars excluding zeros / very small motions
-    cx = (random.random()*0.1+base_motions[0]) * scx
-    cy = (random.random()*0.1+base_motions[1]) * scy
-    cz = (random.random()*0.15+base_motions[2]) * scz
-    camera_mot = [cx*0.5, cy*0.5, cz]
-
-    # generate random triplet of Euler angles
-    # Random sign
-    sax = ((-1)**random.randrange(2))
-    say = ((-1)**random.randrange(2))
-    saz = ((-1)**random.randrange(2))
-    if not base_motions[0] == 0.05:
-        sax = sax * 0.5
-        say = say * 0.5
-        saz = saz * 0.5
-    # Random angles in -pi/18,pi/18, excluding -pi/36,pi/36 to avoid zeros / very small rotations
-    ax = (random.random()*math.pi / 36.0) * sax
-    ay = (random.random()*math.pi / 36.0) * say
-    az = (random.random()*math.pi / 36.0) * saz
-    camera_ang = [ax*0.2, ay*0.2, az*0.2]
-
-    axisangle = torch.from_numpy(
-        np.array([[camera_ang]], dtype=np.float32)).cuda().float()
-    translation = torch.from_numpy(
-        np.array([[camera_mot]])).cuda().float()
-
-    cam_ext = transformation_from_parameters(
-        axisangle, translation)[0]
-    return cam_ext
-
-def generate_random_pose_train(ratio=1.0):
+def generate_random_pose_train(device, ratio=1.0):
     scx = ((-1)**random.randrange(2))
     scy = ((-1)**random.randrange(2))
     scz = ((-1)**random.randrange(2))
@@ -281,14 +240,15 @@ def generate_random_pose_train(ratio=1.0):
     camera_ang = [ax*0.2, ay*0.2, az*0.2]
 
     axisangle = torch.from_numpy(
-        np.array([[camera_ang]], dtype=np.float32)).cuda()
-    translation = torch.from_numpy(np.array([[camera_mot]])).cuda()
+        np.array([[camera_ang]], dtype=np.float32)).to(device)
+    translation = torch.from_numpy(np.array([[camera_mot]])).to(device)
 
     # Compute (R|t)
     cam_ext = transformation_from_parameters(axisangle * ratio, translation * ratio)[0]
     return cam_ext
 
 def render_novel_view_dynamic(
+    device,
     obj_mask,
     mpi_all_rgb_src,
     mpi_all_sigma_src,
@@ -345,9 +305,11 @@ def render_novel_view_dynamic(
     return tgt_imgs_syn, tgt_depth_syn, flow_syn, obj_mask
 
 class MPIFlowDataset(data.Dataset):
-    def __init__(self, args, aug_params=None, sparse=False, image_root='datasets/custom'):
+    def __init__(self, device, args, aug_params=None, sparse=False, image_root='datasets/custom'):
         self.args = args
         self.augmentor = None
+        self.device = device
+        print("device:", device)
         self.sparse = sparse
         if aug_params is not None:
             if sparse:
@@ -366,7 +328,7 @@ class MPIFlowDataset(data.Dataset):
             num_planes=ckpt['num_planes'],
         )
         self.model.load_state_dict(ckpt['weight'])
-        self.model = self.model.cuda().half()
+        self.model = self.model.to(self.device).half()
         self.model = self.model.eval()
 
     def __getitem__(self, index):
@@ -407,21 +369,21 @@ class MPIFlowDataset(data.Dataset):
             [0.58, 0, 0.5],
             [0, 0.58, 0.5],
             [0, 0, 1]
-        ]).cuda().half()
+        ]).to(self.device).half()
         K[0, :] *= self.args.image_size[1] # width
         K[1, :] *= self.args.image_size[0] # height
         K = K.unsqueeze(0)
         
-        image = image_to_tensor(os.path.join(self.image_root, "images", self.image_list[index])).cuda().half()  # [1,3,h,w]
+        image = image_to_tensor(os.path.join(self.image_root, "images", self.image_list[index])).to(self.device).half()  # [1,3,h,w]
         mask = cv2.imread(os.path.join(self.image_root, "masks", self.image_list[index]), 0)
         if mask.max() > 0:
             obj_index = np.random.randint(mask.max()) + 1
         else:
             obj_index = 100
         
-        obj_mask = torch.tensor(mask == obj_index).float().cuda().half()  # [1,3,h,w]
+        obj_mask = torch.tensor(mask == obj_index).float().to(self.device).half()  # [1,3,h,w]
         obj_mask = obj_mask.unsqueeze(0).unsqueeze(0)
-        disp = disparity_to_tensor(os.path.join(self.image_root, "disps", self.image_list[index])).cuda().half() # [1,1,h,w]
+        disp = disparity_to_tensor(os.path.join(self.image_root, "disps", self.image_list[index])).to(self.device).half() # [1,1,h,w]
         image = F.interpolate(image, size=(self.args.image_size[0], self.args.image_size[1]),
                             mode='bilinear', align_corners=True)
         obj_mask = F.interpolate(obj_mask, size=(self.args.image_size[0], self.args.image_size[1]),
@@ -436,10 +398,9 @@ class MPIFlowDataset(data.Dataset):
         src_pose = swing_path_list[0]
         obj_mask_np = obj_mask.squeeze().cpu().numpy()
         # preprocess the predict MPI
-        device = mpi_all_src.device
-        homography_sampler = HomographySample(h, w, device)
+        homography_sampler = HomographySample(h, w, self.device)
         k_src_inv = torch.inverse(K.to(torch.float64).cpu())
-        k_src_inv = k_src_inv.cuda().to(K.dtype)
+        k_src_inv = k_src_inv.to(self.device).to(K.dtype)
         mpi_all_rgb_src = mpi_all_src[:, :, 0:3, :, :]  # BxSx3xHxW
         mpi_all_sigma_src = mpi_all_src[:, :, 3:, :, :]  # BxSx1xHxW
         xyz_src_BS3HW = mpi_rendering.get_src_xyz_from_plane_disparity(
@@ -454,15 +415,16 @@ class MPIFlowDataset(data.Dataset):
             use_alpha=False,
             is_bg_depth_inf=False,
         )
-        cam_ext_dynamic = generate_random_pose_train()
-        cam_ext = generate_random_pose_train(ratio=0.5)
+        cam_ext_dynamic = generate_random_pose_train(self.device)
+        cam_ext = generate_random_pose_train(self.device)
 
         frame, depth, flowA2B, mask = render_novel_view_dynamic(
+            self.device,
             obj_mask,
             mpi_all_rgb_src,
             mpi_all_sigma_src,
             disparity_all_src,
-            cam_ext.cuda(),
+            cam_ext.to(self.device),
             k_src_inv,
             K,
             K,
@@ -471,11 +433,12 @@ class MPIFlowDataset(data.Dataset):
         )
 
         frame_dync, depth_dync, flowA2B_dync, mask_dync = render_novel_view_dynamic(
+            self.device,
             1 - obj_mask,
             mpi_all_rgb_src,
             mpi_all_sigma_src,
             disparity_all_src,
-            cam_ext_dynamic.cuda(),
+            cam_ext_dynamic.to(self.device),
             k_src_inv,
             K,
             K,
@@ -535,7 +498,7 @@ class MPIFlowDataset(data.Dataset):
         return len(self.image_list)
 
 
-def fetch_dataloader(args, TRAIN_DS='C+T+K+S+H'):
+def fetch_dataloader(args, device, TRAIN_DS='C+T+K+S+H'):
     """ Create the data loader for the corresponding trainign set """
 
     if args.stage == 'chairs':
@@ -568,15 +531,11 @@ def fetch_dataloader(args, TRAIN_DS='C+T+K+S+H'):
 
     elif args.stage == 'MPI-Flow':
         aug_params = {'spatial_aug_prob': 1.0, 'crop_size': args.image_size, 'min_scale': -0.2, 'max_scale': -0.1, 'do_flip': False}
-        train_dataset = MPIFlowDataset(args, aug_params)
-        # debug
-        # if args.debug:
-        #     from tqdm import tqdm
-        #     for i in tqdm(range(5000)):
-        #         train_dataset.__getitem__(i)
+        train_dataset = MPIFlowDataset(device, args, aug_params)
 
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     train_loader = data.DataLoader(train_dataset, batch_size=args.batch_size, 
-        pin_memory=False, shuffle=True, num_workers=1, drop_last=True)
+        pin_memory=False, num_workers=2, drop_last=True, sampler=train_sampler)
 
     print('Training with %d single-view images' % len(train_dataset))
     return train_loader

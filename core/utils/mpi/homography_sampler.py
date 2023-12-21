@@ -119,7 +119,7 @@ class HomographySample:
 
         # TODO: fix cuda inverse
         with torch.no_grad():
-            H_src_tgt = inverse(H_tgt_src.to(torch.float64)).to(K_tgt.dtype)
+            H_src_tgt = inverse(H_tgt_src.to(torch.float64)).to(K_tgt.dtype).to(K_tgt.device)
 
         # create tgt image grid, and map to src
         meshgrid_tgt_homo = self.meshgrid.to(src_BCHW.device).to(K_tgt.dtype)
