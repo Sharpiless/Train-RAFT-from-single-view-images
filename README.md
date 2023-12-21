@@ -8,10 +8,16 @@ Code repository is under construction... 🏗️ 🚧 🔨
 ## Update
 - **2023.12.18:** Code for online training released (It's still being examined).
 - **2023.09.13:** Code released.
+- 
+From left to right:
 
-[RAFT: Recurrent All Pairs Field Transforms for Optical Flow](https://arxiv.org/pdf/2003.12039.pdf)<br/>
-ECCV 2020 <br/>
-Zachary Teed and Jia Deng<br/>
+1) original image; 2) generated image; 3) generated optical flow; 4) predicted by RAFT (C+T)
+
+<img src="debug/image.gif" width="80%" >
+
+Generated training examples (after augmentation):
+
+<img src="debug/vis-step00000049.png" width="80%" >
 
 ## Requirements
 
