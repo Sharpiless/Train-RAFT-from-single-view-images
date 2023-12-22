@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import datasets
 from utils import flow_viz
 from utils import frame_utils
+from tqdm import tqdm
 
 from raft import RAFT
 from utils.utils import InputPadder, forward_interpolate
@@ -134,7 +135,7 @@ def validate_kitti(device, model, iters=24):
     val_dataset = datasets.KITTI(split='training')
 
     out_list, epe_list = [], []
-    for val_id in range(len(val_dataset)):
+    for val_id in tqdm(range(len(val_dataset)), desc="evaluating"):
         image1, image2, flow_gt, valid_gt = val_dataset[val_id]
         image1 = image1[None].to(device)
         image2 = image2[None].to(device)
