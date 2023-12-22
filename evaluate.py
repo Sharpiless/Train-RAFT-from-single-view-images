@@ -128,7 +128,7 @@ def validate_sintel(model, iters=32):
 
 
 @torch.no_grad()
-def validate_kitti(model, iters=24):
+def validate_kitti(device, model, iters=24):
     """ Peform validation using the KITTI-2015 (train) split """
     model.eval()
     val_dataset = datasets.KITTI(split='training')
@@ -136,8 +136,8 @@ def validate_kitti(model, iters=24):
     out_list, epe_list = [], []
     for val_id in range(len(val_dataset)):
         image1, image2, flow_gt, valid_gt = val_dataset[val_id]
-        image1 = image1[None].cuda()
-        image2 = image2[None].cuda()
+        image1 = image1[None].to(device)
+        image2 = image2[None].to(device)
 
         padder = InputPadder(image1.shape, mode='kitti')
         image1, image2 = padder.pad(image1, image2)

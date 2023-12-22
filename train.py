@@ -164,7 +164,8 @@ def train(args):
     scaler = GradScaler(enabled=args.mixed_precision)
     logger = Logger(model, scheduler)
 
-    VAL_FREQ = 5000
+    # VAL_FREQ = 5000
+    VAL_FREQ = 10
     add_noise = True
 
     should_keep_training = True
@@ -209,11 +210,11 @@ def train(args):
                 results = {}
                 for val_dataset in args.validation:
                     if val_dataset == 'chairs':
-                        results.update(evaluate.validate_chairs(model.module))
+                        results.update(evaluate.validate_chairs(device, model.module))
                     elif val_dataset == 'sintel':
-                        results.update(evaluate.validate_sintel(model.module))
+                        results.update(evaluate.validate_sintel(device, model.module))
                     elif val_dataset == 'kitti':
-                        results.update(evaluate.validate_kitti(model.module))
+                        results.update(evaluate.validate_kitti(device, model.module))
 
                 logger.write_dict(results)
                 
