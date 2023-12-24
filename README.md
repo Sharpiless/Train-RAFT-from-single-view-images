@@ -6,9 +6,9 @@ This repository contains the modified online training source code for our paper:
 Code repository is under construction... 🏗️ 🚧 🔨
 
 ## Update
+- **2023.12.24:** Update [online trained checkpoints](https://github.com/Sharpiless/Train-RAFT-from-single-view-images/blob/main/checkpoints/32000_ours_general.pth).
 - **2023.12.18:** Code for online training released (It's still being examined).
 - **2023.09.13:** Code released.
-- 
 From left to right:
 
 1) original image; 2) generated image; 3) generated optical flow; 4) predicted by RAFT (C+T)
