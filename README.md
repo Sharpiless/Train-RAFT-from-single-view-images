@@ -11,6 +11,7 @@ Code repository is under construction... 🏗️ 🚧 🔨
 - **2023.09.13:** Code released.
 
 ## Performance
+3.2w steps:
 | Dataset   | EPE        | F1      |
 | :-------: | :--------: | :-----: |
 | KITTI-15 (train) | 3.537468 | 11.694042 |
