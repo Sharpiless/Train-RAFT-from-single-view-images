@@ -14,8 +14,8 @@ Code repository is under construction... 🏗️ 🚧 🔨
 | Dataset   | EPE        | F1      |
 | :-------: | :--------: | :-----: |
 | KITTI-15 (train) | 3.537468 | 11.694042 |
-| Sintel.C |  |  |
-| Sintel.F |  |  |
+| Sintel.C | 1.857986 | - |
+| Sintel.F | 3.250774 | - |
 
 From left to right:
 
