@@ -11,12 +11,13 @@ Code repository is under construction... 🏗️ 🚧 🔨
 - **2023.09.13:** Code released.
 
 ## Performance
-3.2w steps:
+3.2w steps on COCO:
 | Dataset   | EPE        | F1      |
 | :-------: | :--------: | :-----: |
 | KITTI-15 (train) | 3.537468 | 11.694042 |
 | Sintel.C | 1.857986 | - |
 | Sintel.F | 3.250774 | - |
+More training steps are expected to get better performance.
 
 From left to right:
 
