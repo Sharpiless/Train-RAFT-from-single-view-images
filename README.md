@@ -18,6 +18,13 @@ Code repository is under construction... 🏗️ 🚧 🔨
 | Sintel.C | 1.857986 | - |
 | Sintel.F | 3.250774 | - |
 
+32.0w steps on COCO:
+| Dataset   | EPE        | F1      |
+| :-------: | :--------: | :-----: |
+| KITTI-15 (train) | 3.586417 | 9.887916 |
+| Sintel.C | - | - |
+| Sintel.F | - | - |
+
 More training steps are expected to get better performance.
 
 From left to right:
